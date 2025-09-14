@@ -1,157 +1,249 @@
-<script type="module">
-  // ==== shared mini ====
-  const fmt0 = n => Number(n||0).toLocaleString('fr-FR',{maximumFractionDigits:0});
-  const fmt2 = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const save = (k,v)=>localStorage.setItem('express_lakay_v1:'+k, JSON.stringify(v));
-  const load = (k,d=null)=>{ try{return JSON.parse(localStorage.getItem('express_lakay_v1:'+k)) ?? d;}catch{return d;} };
+<!doctype html>
+<html lang="ht">
+<head>
+  <meta charset="utf-8" />
+  <title>Express Lakay — Faktirasyon</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a237e"/>
+  <style>
+    :root{--bg:#f5f7fb;--card:#fff;--ink:#0f172a;--line:#e6eaf1;--pri:#1a237e}
+    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+    body{margin:0;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:980px;margin:24px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+    h1{margin:0 0 10px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    input,select,button,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:16px}
+    .btn{background:var(--pri);color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer}
+    .btn.alt{background:#fff;color:#0f172a;border:1px solid var(--line)}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left}
+    td.r{text-align:right}
+    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .muted{opacity:.75}
+    .brand{display:flex;gap:10px;align-items:center}
+    .brand img{height:42px}
+    @media print {
+      .no-print{display:none}
+      body{background:#fff}
+      .card{border:none;box-shadow:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="no-print" style="display:flex;gap:10px;align-items:center;justify-content:space-between">
+        <h1>Fakti / Proforma</h1>
+        <a class="btn alt" href="./index.html">← Tounen Akèy</a>
+      </div>
 
-  const COMPANIES = [
-    {id:'NEXAPAC', name:'Nexapac Haiti', logo:'./assets/nexapac-logo.png', email:'support@nexapac.ht', phone:'+509 3578 2372', addr:'8298 NW 68th St, Miami, FL 33166', extra:'PQ-044858 • USA→Haiti Logistics'},
-    {id:'RALYTECH', name:'RalyTech Digital Agency', logo:'./assets/ralytech-logo.png', email:'hello@ralytech.ht', phone:'+509 33xx xxxx', addr:'Cap-Haïtien, Haïti', extra:'Marketing & AI Services'}
-  ];
+      <!-- Header konpayi + kliyan -->
+      <div class="row">
+        <div>
+          <label>Konpayi</label>
+          <select id="company"></select>
+          <div class="brand" style="margin-top:8px">
+            <img id="coLogo" alt="logo">
+            <div>
+              <div id="coName"><b>—</b></div>
+              <div class="muted" id="coMeta">—</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label>Tip dokiman</label>
+          <select id="docType">
+            <option value="INVOICE">FACTURE</option>
+            <option value="PROFORMA">PROFORMA</option>
+          </select>
+          <label style="margin-top:10px"># Dokiman</label>
+          <input id="docNo" placeholder="eg. INV-2025-001">
+        </div>
+      </div>
 
-  // ==== UI refs ====
-  const el = id => document.getElementById(id);
-  const tbody = document.querySelector('#tbl tbody');
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label>Kliyan — Non</label>
+          <input id="clName" placeholder="Non kliyan">
+          <label>Telefòn (WhatsApp)</label>
+          <input id="clPhone" placeholder="+509...">
+          <label>Imèl</label>
+          <input id="clEmail" placeholder="client@email.com">
+        </div>
+        <div>
+          <label>Adrès</label>
+          <textarea id="clAddr" rows="5" placeholder="Adrès kliyan"></textarea>
+        </div>
+      </div>
 
-  // Add date field UI
-  (function injectDate(){
-    const row = document.querySelector('#docType').closest('div');
-    const label = document.createElement('label'); label.textContent='Dat dokiman';
-    const input = document.createElement('input'); input.id='docDate'; input.type='date';
-    input.valueAsDate = new Date();
-    row.appendChild(label); row.appendChild(input);
-  })();
+      <!-- Liy atik yo -->
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th style="width:42%">Deskripsyon</th>
+            <th style="width:12%">Qte</th>
+            <th style="width:18%">Pri (HTG)</th>
+            <th style="width:18%">Sou-Total</th>
+            <th class="no-print" style="width:10%"></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <button class="btn alt no-print" id="addRow" style="margin-top:8px">+ Add line</button>
 
-  // ==== Populate company select ====
-  const sel = el('company');
-  COMPANIES.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o); });
-  const applyCompany = () => {
-    const C = COMPANIES.find(x=>x.id===sel.value);
-    el('coLogo').src = C.logo; el('coName').textContent = C.name;
-    el('coMeta').textContent = `${C.email} • ${C.phone} • ${C.addr} • ${C.extra}`;
-    suggestDocNumber(); // resuggest on company switch
-  };
-  sel.addEventListener('change', applyCompany);
-  sel.value = load('invoice:lastCompany','NEXAPAC'); applyCompany();
+      <!-- Somè -->
+      <div class="kpi" style="margin-top:12px">
+        <div>
+          <label>Remiz (%)</label>
+          <input id="discPct" type="number" value="0" step="0.1">
+          <label>Remak</label>
+          <input id="note" placeholder="Remak sou fakti a (opsyonèl)">
+        </div>
+        <div>
+          <table>
+            <tr><td class="r">Sou-total:</td><td class="r" id="sumSub">—</td></tr>
+            <tr><td class="r">Remiz:</td><td class="r" id="sumDisc">—</td></tr>
+            <tr><td class="r"><b>Total HTG:</b></td><td class="r" id="sumTot"><b>—</b></td></tr>
+          </table>
+        </div>
+      </div>
 
-  // ==== line items ====
-  function addRow(data={desc:'', qty:1, price:0}){
-    const tr=document.createElement('tr');
-    tr.innerHTML = `
-      <td><input class="d" value="${data.desc||''}" placeholder="Deskripsyon"/></td>
-      <td><input class="q" type="number" min="0" step="1" value="${data.qty||1}"/></td>
-      <td><input class="p" type="number" min="0" step="0.01" value="${data.price||0}"/></td>
-      <td class="r st">0</td>
-      <td class="no-print"><button class="btn alt rm">Retire</button></td>
-    `;
-    tbody.appendChild(tr);
-    tr.querySelector('.rm')?.addEventListener('click', ()=>{ tr.remove(); compute(); });
-    ['.d','.q','.p'].forEach(cl=>tr.querySelector(cl).addEventListener('input', compute));
-    compute();
-  }
-  document.getElementById('addRow').addEventListener('click', ()=>addRow({}));
+      <!-- Aksyon -->
+      <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn" id="btnSave">💾 Sove</button>
+        <button class="btn alt" id="btnPrint">🖨️ Print / PDF</button>
+        <button class="btn alt" id="btnWa">🟢 WhatsApp</button>
+        <button class="btn alt" id="btnLoad">📂 Dènye dokiman</button>
+        <span class="muted" id="status"></span>
+      </div>
+    </div>
 
-  // load last draft
-  const last = load('invoice:lastDraft', null);
-  if(last){
-    el('docType').value=last.docType||'INVOICE';
-    el('docNo').value=last.docNo||'';
-    document.getElementById('docDate').value = (last.docDate || new Date().toISOString().slice(0,10));
-    el('clName').value=last.cl?.name||'';
-    el('clPhone').value=last.cl?.phone||'';
-    el('clEmail').value=last.cl?.email||'';
-    el('clAddr').value=last.cl?.addr||'';
-    el('discPct').value=last.discPct||0;
-    (last.items||[{},{},{}]).forEach(addRow);
-  }else{
-    [{},{},{}].forEach(addRow); // 3 empty lines
-    suggestDocNumber(); // first suggestion
-  }
+    <footer class="muted" style="margin-top:10px">© Express Lakay</footer>
+  </div>
 
-  // ==== compute totals ====
-  function getItems(){
-    return [...tbody.querySelectorAll('tr')].map(tr=>{
-      const d=tr.querySelector('.d').value.trim();
-      const q=Number(tr.querySelector('.q').value||0);
-      const p=Number(tr.querySelector('.p').value||0);
-      return {desc:d, qty:q, price:p, sub:q*p};
-    }).filter(x=>x.desc || x.qty || x.price);
-  }
-  function compute(){
-    const items = getItems();
-    let sub = items.reduce((s,x)=>s+x.sub,0);
-    const discPct = Number(el('discPct').value||0);
-    const disc = sub * (discPct/100);
-    const tot = sub - disc;
-    [...tbody.querySelectorAll('tr')].forEach((tr,i)=>{
-      const it = items[i]||{sub:0};
-      const td = tr.querySelector('.st'); if(td) td.textContent = fmt2(it.sub);
+  <!-- SHARED (inlined to keep things simple) -->
+  <script type="module">
+    // ==== shared (mini) ====
+    const fmt0 = n => Number(n||0).toLocaleString('fr-FR',{maximumFractionDigits:0});
+    const fmt2 = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const save = (k,v)=>localStorage.setItem('express_lakay_v1:'+k, JSON.stringify(v));
+    const load = (k,d=null)=>{ try{return JSON.parse(localStorage.getItem('express_lakay_v1:'+k)) ?? d;}catch{return d;} };
+
+    const COMPANIES = [
+      {id:'NEXAPAC', name:'Nexapac Haiti', logo:'./assets/nexapac-logo.png', email:'support@nexapac.ht', phone:'+509 3578 2372', addr:'8298 NW 68th St, Miami, FL 33166', extra:'PQ-044858 • USA→Haiti Logistics'},
+      {id:'RALYTECH', name:'RalyTech Digital Agency', logo:'./assets/ralytech-logo.png', email:'hello@ralytech.ht', phone:'+509 33xx xxxx', addr:'Cap-Haïtien, Haïti', extra:'Marketing & AI Services'}
+    ];
+
+    // ==== UI refs ====
+    const el = id => document.getElementById(id);
+    const tbody = document.querySelector('#tbl tbody');
+
+    // ==== Populate company select ====
+    const sel = el('company');
+    COMPANIES.forEach(c => {
+      const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o);
     });
-    el('sumSub').textContent = fmt2(sub);
-    el('sumDisc').textContent = '- '+fmt2(disc);
-    el('sumTot').textContent = fmt2(tot);
-    return {items, sub, discPct, disc, tot};
-  }
-  ['discPct'].forEach(id=>el(id).addEventListener('input', compute));
-  compute();
-
-  // ==== Auto-numbering per company & year ====
-  function counterKey(companyId, docType){
-    const y = (new Date(document.getElementById('docDate').value||new Date())).getFullYear();
-    return `invoice:counter:${companyId}:${docType}:${y}`;
-  }
-  function nextNumber(companyId, docType){
-    const key = counterKey(companyId, docType);
-    const n = (load(key, 0) || 0) + 1;
-    save(key, n);
-    const y = (new Date(document.getElementById('docDate').value||new Date())).getFullYear();
-    const prefix = (docType==='INVOICE'?'INV':'PRO');
-    return `${prefix}-${y}-${String(n).padStart(3,'0')}`;
-  }
-  function peekNumber(companyId, docType){
-    const y = (new Date(document.getElementById('docDate').value||new Date())).getFullYear();
-    const cur = load(counterKey(companyId, docType), 0) + 1;
-    const prefix = (docType==='INVOICE'?'INV':'PRO');
-    return `${prefix}-${y}-${String(cur).padStart(3,'0')}`;
-  }
-  function suggestDocNumber(){
-    if((el('docNo').value||'').trim()) return; // pa écrase si itilizatè deja mete
-    const Cid = el('company').value; const tp = el('docType').value;
-    el('docNo').placeholder = peekNumber(Cid, tp);
-  }
-  el('docType').addEventListener('change', suggestDocNumber);
-  document.getElementById('docDate').addEventListener('change', suggestDocNumber);
-
-  // ==== Save / Load / Print / WhatsApp ====
-  el('btnSave').addEventListener('click', ()=>{
-    const C = COMPANIES.find(x=>x.id===el('company').value);
-    let docNo = (el('docNo').value||'').trim();
-    if(!docNo){ docNo = nextNumber(C.id, el('docType').value); el('docNo').value = docNo; }
-    const doc = {
-      company: C,
-      docType: el('docType').value,
-      docNo,
-      docDate: document.getElementById('docDate').value || new Date().toISOString().slice(0,10),
-      cl: {name:el('clName').value.trim(), phone:el('clPhone').value.trim(), email:el('clEmail').value.trim(), addr:el('clAddr').value.trim()},
-      ...compute(),
-      note: el('note').value.trim(),
-      dt: new Date().toISOString()
+    const applyCompany = () => {
+      const C = COMPANIES.find(x=>x.id===sel.value);
+      el('coLogo').src = C.logo; el('coName').textContent = C.name;
+      el('coMeta').textContent = `${C.email} • ${C.phone} • ${C.addr} • ${C.extra}`;
     };
-    save('invoice:lastDraft', doc);
-    save('invoice:lastCompany', C.id);
-    document.getElementById('status').textContent = `Sove ✅ (#${doc.docNo})`;
-    setTimeout(()=>document.getElementById('status').textContent='', 1500);
-  });
+    sel.addEventListener('change', applyCompany);
+    sel.value = load('invoice:lastCompany','NEXAPAC'); applyCompany();
 
-  el('btnLoad').addEventListener('click', ()=>location.reload());
-  el('btnPrint').addEventListener('click', ()=>window.print());
-  el('btnWa').addEventListener('click', ()=>{
-    const C = COMPANIES.find(x=>x.id===el('company').value);
-    const {items, tot} = compute();
-    const lines = items.slice(0,7).map(x=>`• ${x.desc} × ${x.qty} = ${fmt2(x.sub)} HTG`).join('\n');
-    const msg =
-`${el('docType').value} ${el('docNo').value||'(proforma)'} — ${document.getElementById('docDate').value||new Date().toISOString().slice(0,10)}
+    // ==== line items ====
+    function addRow(data={desc:'', qty:1, price:0}){
+      const tr=document.createElement('tr');
+      tr.innerHTML = `
+        <td><input class="d" value="${data.desc||''}" placeholder="Deskripsyon"/></td>
+        <td><input class="q" type="number" min="0" step="1" value="${data.qty||1}"/></td>
+        <td><input class="p" type="number" min="0" step="0.01" value="${data.price||0}"/></td>
+        <td class="r st">0</td>
+        <td class="no-print"><button class="btn alt rm">Retire</button></td>
+      `;
+      tbody.appendChild(tr);
+      tr.querySelector('.rm')?.addEventListener('click', ()=>{ tr.remove(); compute(); });
+      ['.d','.q','.p'].forEach(cl=>tr.querySelector(cl).addEventListener('input', compute));
+      compute();
+    }
+    el('addRow').addEventListener('click', ()=>addRow({}));
+
+    // load last draft
+    const last = load('invoice:lastDraft', null);
+    if(last){
+      el('docType').value=last.docType||'INVOICE';
+      el('docNo').value=last.docNo||'';
+      el('clName').value=last.cl?.name||'';
+      el('clPhone').value=last.cl?.phone||'';
+      el('clEmail').value=last.cl?.email||'';
+      el('clAddr').value=last.cl?.addr||'';
+      el('discPct').value=last.discPct||0;
+      (last.items||[{},{},{}]).forEach(addRow);
+    }else{
+      [{},{},{}].forEach(addRow); // 3 empty lines
+    }
+
+    // ==== compute totals ====
+    function getItems(){
+      return [...tbody.querySelectorAll('tr')].map(tr=>{
+        const d=tr.querySelector('.d').value.trim();
+        const q=Number(tr.querySelector('.q').value||0);
+        const p=Number(tr.querySelector('.p').value||0);
+        return {desc:d, qty:q, price:p, sub:q*p};
+      }).filter(x=>x.desc || x.qty || x.price);
+    }
+    function compute(){
+      const items = getItems();
+      let sub = items.reduce((s,x)=>s+x.sub,0);
+      const discPct = Number(el('discPct').value||0);
+      const disc = sub * (discPct/100);
+      const tot = sub - disc;
+
+      // update rows
+      [...tbody.querySelectorAll('tr')].forEach((tr,i)=>{
+        const it = items[i]||{sub:0};
+        const td = tr.querySelector('.st'); if(td) td.textContent = fmt2(it.sub);
+      });
+
+      el('sumSub').textContent = fmt2(sub);
+      el('sumDisc').textContent = '- '+fmt2(disc);
+      el('sumTot').textContent = fmt2(tot);
+      return {items, sub, discPct, disc, tot};
+    }
+    ['discPct'].forEach(id=>el(id).addEventListener('input', compute));
+    compute();
+
+    // ==== Save / Load / Print / WhatsApp ====
+    el('btnSave').addEventListener('click', ()=>{
+      const C = COMPANIES.find(x=>x.id===el('company').value);
+      const doc = {
+        company: C, docType: el('docType').value, docNo: el('docNo').value.trim(),
+        cl: {name:el('clName').value.trim(), phone:el('clPhone').value.trim(), email:el('clEmail').value.trim(), addr:el('clAddr').value.trim()},
+        ...compute(), note: el('note').value.trim(), dt: new Date().toISOString()
+      };
+      save('invoice:lastDraft', doc);
+      save('invoice:lastCompany', C.id);
+      el('status').textContent = 'Sove ✅';
+      setTimeout(()=>el('status').textContent='', 1500);
+    });
+
+    el('btnLoad').addEventListener('click', ()=>{
+      const d = load('invoice:lastDraft', null);
+      if(!d){ alert('Pa gen dènye dokiman.'); return; }
+      // (senp: re-chaje paj la pou re-peple) 
+      location.reload();
+    });
+
+    el('btnPrint').addEventListener('click', ()=>window.print());
+
+    el('btnWa').addEventListener('click', ()=>{
+      const C = COMPANIES.find(x=>x.id===el('company').value);
+      const {items, tot} = compute();
+      const lines = items.slice(0,7).map(x=>`• ${x.desc} × ${x.qty} = ${fmt2(x.sub)} HTG`).join('\n');
+      const msg =
+`${el('docType').value} ${el('docNo').value||''}
 ${C.name}
 Total: ${fmt2(tot)} HTG
 
@@ -159,10 +251,12 @@ ${lines}
 Remak: ${el('note').value||'-'}
 
 Kontak: ${C.phone} • ${C.email}`;
-    const phone = el('clPhone').value.trim();
-    const url = phone ? `https://wa.me/${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
-    window.open(url,'_blank');
-  });
+      const phone = el('clPhone').value.trim(); // opsyonèl
+      const url = phone ? `https://wa.me/${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+      window.open(url,'_blank');
+    });
 
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
-</script>
+    if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
+  </script>
+</body>
+</html>
