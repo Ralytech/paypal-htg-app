@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ht">
+<head>
+  <meta charset="utf-8" />
+  <title>Express Lakay — DOP → HTG</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a237e"/>
+  <style>
+    :root{--bg:#f5f7fb;--card:#fff;--ink:#0f172a;--muted:#5b6b8c;--line:#e6eaf1;--pri:#1a237e}
+    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+    body{margin:0;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:980px;margin:24px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+    h1{margin:0 0 10px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    label{display:block;font-size:.9rem;color:#334155;margin:6px 0 4px}
+    input,select,button{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px}
+    .seg{display:inline-grid;grid-auto-flow:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+    .seg button{border:none;background:#fff;padding:10px 14px;cursor:pointer}
+    .seg button.active{background:#eef2ff;color:#1e1b4b;font-weight:600}
+    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+    .kpi .box{border:1px solid var(--line);border-radius:12px;background:#fafbfd;padding:12px}
+    .kpi .t{font-size:.9rem;color:#475569;margin-bottom:4px}
+    .kpi .v{font-weight:800}
+    .bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{background:var(--pri);color:#fff;border:none;cursor:pointer}
+    .btn.alt{background:#fff;color:#0f172a;border:1px solid var(--line)}
+    .muted{color:var(--muted);font-size:.9rem}
+    a.back{display:inline-block;margin-bottom:10px;text-decoration:none}
+    footer{margin-top:14px;color:#64748b;font-size:.85rem}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="./index.html">← Tounen Akèy</a>
+    <div class="card">
+      <h1>DOP → HTG (NatCash / MonCash)</h1>
+
+      <div class="row">
+        <div>
+          <label>Montan PESOS (DOP)</label>
+          <input id="amount" type="number" min="0" step="1" value="1100"/>
+          <div class="muted">Sa ka enkli 10% frè sèvis selon modèl ou.</div>
+        </div>
+        <div>
+          <label>To konvèsyon (HTG pou 1 peso)</label>
+          <input id="rate" type="number" step="0.0001" value="2.1"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Platfòm reseptè</label>
+          <select id="provider">
+            <option value="MONCASH">MonCash</option>
+            <option value="NATCASH">NatCash</option>
+          </select>
+        </div>
+        <div>
+          <label>Mode P2P</label>
+          <div class="seg" role="group">
+            <button type="button" class="segbtn active" data-mode="NET">NET</button>
+            <button type="button" class="segbtn" data-mode="GROSS">GROSS-UP</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Remak / Kòd kliyan (opsyonèl)</label>
+          <input id="note" placeholder="eg. Jean • 509-33xx • PQ-xxxxx">
+        </div>
+      </div>
+
+      <div class="bar">
+        <button class="btn" id="calc">Kalkile</button>
+        <button class="btn alt" id="save">Sove nan Rejis</button>
+      </div>
+
+      <div class="kpi">
+        <div class="box"><div class="t">HTG brut (konvèti)</div><div class="v" id="kBrut">—</div></div>
+        <div class="box"><div class="t">Frè P2P</div><div class="v" id="kFee">—</div></div>
+        <div class="box"><div class="t">HTG voye / resevwa</div><div class="v" id="kNet">—</div></div>
+      </div>
+
+      <footer>*Frè P2P aplike sou HTG, antranch selon tablo ofisyèl yo.</footer>
+    </div>
+  </div>
+
+  <script>
+    // ---------- Fee tables ----------
+    const NATCASH_FEES=[{min:20,fee:0},{min:250,fee:0},{min:500,fee:6},{min:1000,fee:18},{min:2000,fee:25},{min:4000,fee:35},{min:8000,fee:54},{min:12000,fee:63},{min:20000,fee:68},{min:40000,fee:90},{min:60000,fee:108},{min:75000,fee:115}];
+    const MONCASH_FEES=[{min:0,fee:0},{min:250,fee:5},{min:500,fee:10},{min:1000,fee:25},{min:2000,fee:35},{min:4000,fee:50},{min:8000,fee:60},{min:12000,fee:70},{min:20000,fee:75},{min:40000,fee:100},{min:60000,fee:120},{min:75000,fee:130}];
+    const lookup=(htg,prov)=>{const t=prov==='NATCASH'?NATCASH_FEES:MONCASH_FEES;let f=0;for(const b of t){if(htg>=b.min)f=b.fee}return f;}
+    const grossUp=(target,prov)=>{let g=target;for(let i=0;i<10;i++){const f=lookup(g,prov);const d=(target+f)-g;if(Math.abs(d)<.5)break;g+=d}return Math.round(target+lookup(g,prov))}
+
+    // ---------- Helpers ----------
+    const el=id=>document.getElementById(id);
+    const fmt=n=>Number(n).toLocaleString('fr-FR',{maximumFractionDigits:0});
+    function toast(m){console.log(m)}
+
+    // ---------- Registry (encrypted localStorage) ----------
+    const KEY='express_lakay_registry_cipher_v1', META='express_lakay_meta_v1';
+    let pin=null, unlocked=false;
+    const getMeta=()=>{try{return JSON.parse(localStorage.getItem(META)||'{}')}catch{return{}}}
+    const setMeta=m=>localStorage.setItem(META,JSON.stringify(m));
+    async function deriveKey(pin,saltB64){
+      const enc=new TextEncoder(); const salt=saltB64?Uint8Array.from(atob(saltB64),c=>c.charCodeAt(0)):crypto.getRandomValues(new Uint8Array(16));
+      const km=await crypto.subtle.importKey('raw',enc.encode(pin),'PBKDF2',false,['deriveKey']);
+      const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+      return {key,saltB64:btoa(String.fromCharCode(...salt))};
+    }
+    async function encryptJSON(obj,pin){const {key,saltB64}=await deriveKey(pin,getMeta().saltB64);const iv=crypto.getRandomValues(new Uint8Array(12));const data=new TextEncoder().encode(JSON.stringify(obj));const buf=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,data);setMeta({saltB64,locked:true});return JSON.stringify({iv:btoa(String.fromCharCode(...iv)),ct:btoa(String.fromCharCode(...new Uint8Array(buf)))})}
+    async function decryptJSON(str,pin){const meta=getMeta();if(!str||!meta.saltB64)return[];const {key}=await deriveKey(pin,meta.saltB64);const {iv,ct}=JSON.parse(str);const ivA=Uint8Array.from(atob(iv),c=>c.charCodeAt(0));const ctA=Uint8Array.from(atob(ct),c=>c.charCodeAt(0));const buf=await crypto.subtle.decrypt({name:'AES-GCM',iv:ivA},key,ctA);return JSON.parse(new TextDecoder().decode(buf))}
+    async function getReg(){try{const meta=getMeta();const c=localStorage.getItem(KEY);if(meta.locked){if(!pin){pin=prompt('Antre PIN pou ouvri rejis:')||null}if(!pin)return[];const arr=await decryptJSON(c,pin);unlocked=true;return arr}else{return JSON.parse(c||'[]')}}catch{return[]}}
+    async function setReg(arr){const meta=getMeta();if(meta.locked){if(!pin){pin=prompt('Antre PIN pou sove:')||null;if(!pin)return}const cipher=await encryptJSON(arr,pin);localStorage.setItem(KEY,cipher)}else{localStorage.setItem(KEY,JSON.stringify(arr))}}
+    async function addReg(it){const arr=await getReg();arr.unshift({dt:new Date().toISOString(),...it});await setReg(arr);toast('Sove')}
+
+    // ---------- UI logic ----------
+    let mode='NET'; document.querySelectorAll('.segbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.segbtn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); mode=b.dataset.mode;})
+    function calc(){
+      const pesos=Number(el('amount').value||0), rate=Number(el('rate').value||0), prov=el('provider').value;
+      if(pesos<=0||rate<=0){toast('Antre valè ki valab.'); return null}
+      const brut=pesos*rate; let fee=0,net=0,send=0;
+      if(mode==='NET'){fee=lookup(brut,prov); net=Math.max(0,Math.round(brut-fee)); send=net;}
+      else{send=grossUp(brut,prov); fee=lookup(send,prov); net=Math.round(send-fee);}
+      el('kBrut').textContent=fmt(Math.round(brut))+' HTG';
+      el('kFee').textContent =fmt(fee)+' HTG';
+      el('kNet').textContent =fmt(net)+' HTG';
+      return {type:'DOP→HTG',platform:prov,dir:'P2P',in:`${fmt(pesos)} DOP`,out:`${fmt(net)} HTG`,fee:`${fmt(fee)} HTG`,note:el('note').value||''};
+    }
+    el('calc').onclick=calc;
+    el('save').onclick=async()=>{const r=calc(); if(r) await addReg(r);}
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{})}
+    // pre-calc
+    el('calc').click();
+  </script>
+</body>
+</html>
