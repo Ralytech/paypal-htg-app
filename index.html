@@ -1,370 +1,52 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ht">
 <head>
-  <meta charset="UTF-8">
-  <title>Express Lakay – Kalkilatè & Rejis</title>
+  <meta charset="utf-8" />
+  <title>Express Lakay — Akèy</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a237e"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    :root{
-      --bg:#e8f0fe; --card:#fff; --ink:#0b132b; --muted:#5b6b8c;
-      --pri:#1a237e; --ok:#22c55e; --warn:#f59e0b; --line:#e5e7eb;
-    }
-    body{font-family:Arial,system-ui,sans-serif;background:var(--bg);padding:24px;color:var(--ink)}
-    h2{color:var(--pri);margin:0 0 14px}
-    .container{background:var(--card);padding:22px;max-width:980px;margin:auto;border-radius:12px;box-shadow:0 0 15px rgba(0,0,0,.08)}
-    input,select,button{padding:10px;margin:8px 0;width:100%;max-width:480px;font-size:16px;border:1px solid var(--line);border-radius:8px}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .muted{color:var(--muted);font-size:.9rem}
-    .btn{background:#0b132b;color:#fff;cursor:pointer}
-    .btn.alt{background:#fff;color:#0b132b;border:1px solid var(--line)}
-    .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid var(--line);font-size:.8rem;color:var(--muted);margin-left:8px}
-    .tabs{display:flex;gap:8px;margin:6px 0 14px}
-    .tab{padding:8px 12px;border:1px solid var(--line);background:#fff;border-radius:999px;cursor:pointer}
-    .tab.active{background:var(--pri);color:#fff;border-color:var(--pri)}
-    .card{border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:8px}
-    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
-    .kpi .box{border:1px solid var(--line);border-radius:10px;padding:12px;background:#f9fafb}
-    .kpi h3{margin:0 0 6px;font-size:.95rem;color:#334155}
-    .kpi p{margin:0;font-weight:bold}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;font-size:.92rem}
-    td.r{text-align:right}
-    .flex{display:flex;gap:10px;flex-wrap:wrap}
-    .right{margin-left:auto}
-    footer{margin-top:16px;color:var(--muted);font-size:.85rem}
+    :root{--bg:#f5f7fb;--card:#fff;--ink:#0f172a;--line:#e6eaf1;--pri:#1a237e}
+    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+    body{margin:0;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:980px;margin:24px auto;padding:0 16px}
+    h1{margin:0 0 10px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+    a.btn{display:block;text-decoration:none;background:var(--pri);color:#fff;padding:12px 14px;border-radius:10px;text-align:center;margin-top:8px}
+    .muted{opacity:.7}
+    footer{margin-top:18px;opacity:.7}
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="flex" style="align-items:center">
-      <h2>Express Lakay – Kalkilatè & Rejis</h2>
-      <span class="pill">PWA • Offline</span>
-      <span class="pill">NatCash / MonCash / PayPal / Wise</span>
+  <div class="wrap">
+    <h1>Express Lakay</h1>
+    <div class="muted">Kalkil & Rejis multi-paj • PWA offline</div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>DOP → HTG (NatCash / MonCash)</h3>
+        <p>Kalkil HTG resevwa aprè frè P2P oswa gross-up.</p>
+        <a class="btn" href="./calc-dop.html">Ouvri kalkilatè a</a>
+      </div>
+      <div class="card">
+        <h3>PayPal / Wise</h3>
+        <p>Top-up HTG→USD oswa Withdraw USD→HTG (5% default).</p>
+        <a class="btn" href="./calc-ppwise.html">Ouvri kalkilatè a</a>
+      </div>
+      <div class="card">
+        <h3>Fakti / Proforma</h3>
+        <p>Chwazi Nexapac oswa RalyTech • Logo & idantite otomatik.</p>
+        <a class="btn" href="./invoice.html">Kreye faktirasyon</a>
+      </div>
     </div>
 
-    <div class="tabs">
-      <button class="tab active" data-tab="dop-htg">DOP → HTG (Express Lakay)</button>
-      <button class="tab" data-tab="pp-wise">PayPal / Wise</button>
-      <button class="tab" data-tab="registry">Rejis</button>
-    </div>
-
-    <!-- TAB 1: Express Lakay -->
-    <section id="dop-htg" class="card">
-      <h3>DOP → HTG (kliyan peye an pesos)</h3>
-      <div class="row">
-        <div>
-          <label>Montan PESOS (DOP)</label>
-          <input id="dop_amount" type="number" step="1" placeholder="eg. 1100" value="1100">
-        </div>
-        <div>
-          <label>To konvèsyon (HTG pou 1 peso)</label>
-          <input id="dop_rate" type="number" step="0.0001" value="2.1">
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Platfòm reseptè</label>
-          <select id="dop_provider">
-            <option value="MONCASH">MonCash</option>
-            <option value="NATCASH">NatCash</option>
-          </select>
-        </div>
-        <div>
-          <label>Mode P2P</label>
-          <select id="dop_mode">
-            <option value="NET">NET — resevwa aprè frè</option>
-            <option value="GROSS">GROSS-UP — resevwa egzak (nou kouvri frè)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Surcharge sèvis (10%) sou PESOS?</label>
-          <select id="dop_surcharge">
-            <option value="ON">ON (P×1.10)</option>
-            <option value="OFF">OFF</option>
-          </select>
-          <div class="muted">Modèl ou te dekri: kliyan peye montan + 10%.</div>
-        </div>
-        <div>
-          <label>Remak / Kòd kliyan (opsyonèl)</label>
-          <input id="dop_note" placeholder="eg. Jean • 509-33xx • PQ-xxxxx">
-        </div>
-      </div>
-
-      <button class="btn" id="dop_calc">Kalkile</button>
-      <div class="kpi">
-        <div class="box"><h3>HTG brut (konvèti)</h3><p id="dop_brut">—</p></div>
-        <div class="box"><h3>Frè P2P</h3><p id="dop_fee">—</p></div>
-        <div class="box"><h3>HTG voye / resevwa</h3><p id="dop_net">—</p></div>
-      </div>
-
-      <div class="flex" style="margin-top:10px">
-        <button class="btn alt" id="dop_save">Sove nan rejis</button>
-      </div>
-      <footer>*P2P fees antranch selon tablo ofisyèl yo. Ou ka ajiste yo nan kòd la.</footer>
-    </section>
-
-    <!-- TAB 2: PayPal / Wise -->
-    <section id="pp-wise" class="card" style="display:none">
-      <h3>PayPal / Wise (Top-up oswa Withdraw)</h3>
-      <div class="row">
-        <div>
-          <label>Platfòm</label>
-          <select id="px_platform">
-            <option value="PAYPAL">PayPal</option>
-            <option value="WISE">Wise</option>
-          </select>
-        </div>
-        <div>
-          <label>Direksyon</label>
-          <select id="px_direction">
-            <option value="TOPUP">Top-up (HTG → USD)</option>
-            <option value="WITHDRAW">Withdraw (USD → HTG)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Montan sib (resevwa NET sou platfòm la)</label>
-          <input id="px_target" type="number" step="0.01" placeholder="eg. 50.00">
-          <div class="muted">
-            TOP-UP: sa se USD yo bezwen wè sou kont yo.  
-            WITHDRAW: sa se HTG yo bezwen resevwa an viweman/MonCash/NatCash.
-          </div>
-        </div>
-        <div>
-          <label>Taux (HTG pou 1 USD)</label>
-          <input id="px_rate" type="number" step="0.01" placeholder="eg. 135">
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Frè %</label>
-          <input id="px_percent" type="number" step="0.1" value="5">
-        </div>
-        <div>
-          <label>Frè fiks (USD) — PayPal sèlman si ou vle</label>
-          <input id="px_fixed" type="number" step="0.01" value="0.30">
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Remak / Kòd kliyan (opsyonèl)</label>
-          <input id="px_note" placeholder="eg. @tiktok • 509-3xxx">
-        </div>
-      </div>
-
-      <button class="btn" id="px_calc">Kalkile</button>
-      <div class="kpi">
-        <div class="box"><h3>Total HTG peye / resevwa</h3><p id="px_htg">—</p></div>
-        <div class="box"><h3>Total USD voye / resevwa</h3><p id="px_usd">—</p></div>
-        <div class="box"><h3>Frè total</h3><p id="px_fee">—</p></div>
-      </div>
-
-      <div class="flex" style="margin-top:10px">
-        <button class="btn alt" id="px_save">Sove nan rejis</button>
-      </div>
-      <footer>*Default: 5% (ajiste selon ka). Pou PayPal, frè fiks $0.30 si sa aplike.</footer>
-    </section>
-
-    <!-- TAB 3: Registry -->
-    <section id="registry" class="card" style="display:none">
-      <h3>Rejis tranzaksyon</h3>
-      <div class="flex">
-        <button class="btn alt" id="exportCsv">Ekspòte CSV</button>
-        <button class="btn alt" id="clearAll">Efase tout</button>
-        <span class="right muted" id="countInfo">0 atik</span>
-      </div>
-      <table id="tblReg">
-        <thead>
-          <tr>
-            <th>Dat</th><th>Tip</th><th>Platfòm</th><th>Dir.</th><th>Antre</th><th>Sòti</th><th>Frè</th><th>Nòt</th><th></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <footer>Done yo sove **lokal** (navigatè). Nou ka konekte li ak backend pita (Supabase/Sheets) pou rapò pa semèn/mwa.</footer>
-    </section>
-
-    <footer style="margin-top:14px">© Express Lakay</footer>
+    <footer>© Express Lakay</footer>
   </div>
 
   <script>
-    // ===== Tabs =====
-    document.querySelectorAll('.tab').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('section.card').forEach(s=>s.style.display='none');
-        document.getElementById(btn.dataset.tab).style.display='';
-      });
-    });
-
-    // ===== Fee tables (P2P) =====
-    const natcashFees = [
-      {min:20,fee:0},{min:250,fee:0},{min:500,fee:6},{min:1000,fee:18},{min:2000,fee:25},
-      {min:4000,fee:35},{min:8000,fee:54},{min:12000,fee:63},{min:20000,fee:68},
-      {min:40000,fee:90},{min:60000,fee:108},{min:75000,fee:115},
-    ];
-    const moncashFees = [
-      {min:0,fee:0},{min:250,fee:5},{min:500,fee:10},{min:1000,fee:25},{min:2000,fee:35},
-      {min:4000,fee:50},{min:8000,fee:60},{min:12000,fee:70},{min:20000,fee:75},
-      {min:40000,fee:100},{min:60000,fee:120},{min:75000,fee:130},
-    ];
-    function lookupP2PFee(amountHTG, provider){
-      const table = provider==='NATCASH' ? natcashFees : moncashFees;
-      let f=0; for(const b of table){ if(amountHTG>=b.min) f=b.fee; }
-      return f;
-    }
-    function fmt(n){ return Number(n).toLocaleString('fr-FR',{maximumFractionDigits:0}); }
-    function fmtd(n){ return Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2, maximumFractionDigits:2}); }
-
-    // ===== DOP → HTG =====
-    const el = (id)=>document.getElementById(id);
-    function grossUpForTarget(targetHTG, provider){
-      let guess = targetHTG;
-      for(let i=0;i<10;i++){
-        const fee = lookupP2PFee(guess, provider);
-        const need = targetHTG + fee;
-        const diff = need - guess;
-        if(Math.abs(diff)<0.5) break;
-        guess += diff;
-      }
-      const final = Math.round(targetHTG + lookupP2PFee(guess, provider));
-      return final;
-    }
-
-    function calcDOP(){
-      let pesos = Number(el('dop_amount').value||0);
-      const rate  = Number(el('dop_rate').value||0);
-      const provider = el('dop_provider').value;
-      const mode  = el('dop_mode').value;
-      const surcharge = el('dop_surcharge').value==='ON';
-
-      if(surcharge) pesos = pesos; // sa a se montan KLIYAN peye deja (eg. 1100)
-      // Nou vle jwenn pati net ki ale sou transfè a: si modèl ou se "resevwa nan men kliyan 1100 pou voye 1000",
-      // antre 1100 la, epi kalkil HTG base sou 1000 si w vle; men pi senp:
-      // Konvèti pesos TOTAL yo → HTG brut (sa ki refere a montan resevwa pa reseptè a anvan frè).
-      const htgBrut = pesos * rate;
-
-      let fee=0, htgNet=0, toSend=0;
-      if(mode==='NET'){
-        fee = lookupP2PFee(htgBrut, provider);
-        htgNet = Math.max(0, Math.round(htgBrut - fee));
-        toSend = htgNet;
-      }else{
-        toSend = grossUpForTarget(htgBrut, provider);
-        fee = lookupP2PFee(toSend, provider);
-        htgNet = Math.round(toSend - fee);
-      }
-
-      el('dop_brut').textContent = fmt(Math.round(htgBrut))+' HTG';
-      el('dop_fee').textContent  = fmt(fee)+' HTG';
-      el('dop_net').textContent  = fmt(htgNet)+' HTG';
-
-      return {
-        type:'DOP→HTG', platform:provider, dir:'P2P',
-        in:`${fmt(pesos)} DOP`, out:`${fmt(htgNet)} HTG`,
-        fee:`${fmt(fee)} HTG`, note: el('dop_note').value || ''
-      };
-    }
-    el('dop_calc').addEventListener('click', calcDOP);
-
-    // ===== PayPal/Wise (5%) =====
-    function calcPX(){
-      const pf = el('px_platform').value;
-      const dir = el('px_direction').value;
-      const target = Number(el('px_target').value||0);
-      const rate = Number(el('px_rate').value||0);
-      const pct = Number(el('px_percent').value||0)/100;
-      const fixed = Number(el('px_fixed').value||0);
-
-      let usd=0, htg=0, fee=0;
-
-      if(dir==='TOPUP'){
-        // Vle X USD net sou platfòm.
-        // Si PayPal: gross-up ak pct + fixed. Si Wise: fixed ka 0.
-        usd = (target + fixed) / (1 - pct);
-        fee = usd - target;
-        htg = usd * rate;
-      }else{
-        // WITHDRAW: Vle HTG net = target.
-        // Nou konvèti an USD, epi ajoute frè si platfòm pran pct/fixed sou USD la;
-        // oswa si frè aplike sou HTG, ajiste selon modèl ou (isit la sou USD).
-        const wantHTG = target;
-        const usdNeededNet = wantHTG / rate;
-        usd = (usdNeededNet + fixed) / (1 - pct);
-        fee = usd - usdNeededNet;
-        htg = wantHTG; // sa resevwa net
-      }
-
-      el('px_htg').textContent = fmtd(htg)+' HTG';
-      el('px_usd').textContent = '$'+fmtd(usd)+' USD';
-      el('px_fee').textContent = (pf==='PAYPAL' ? ('$'+fmtd(fee)+' USD') : (dir==='TOPUP' ? ('$'+fmtd(fee)+' USD') : ('$'+fmtd(fee)+' USD')));
-
-      return {
-        type:'PP/Wise', platform:pf, dir,
-        in: dir==='TOPUP' ? `${fmtd(usd)} USD (~${fmtd(usd*rate)} HTG)` : `${fmtd(usd)} USD`,
-        out: dir==='TOPUP' ? `${fmtd(target)} USD` : `${fmtd(target)} HTG`,
-        fee: pf==='PAYPAL' ? `$${fmtd(fee)} USD` : `$${fmtd(fee)} USD`,
-        note: el('px_note').value || ''
-      };
-    }
-    el('px_calc').addEventListener('click', calcPX);
-
-    // ===== Registry (localStorage) =====
-    const KEY='express_lakay_registry_v1';
-    function getReg(){ try{return JSON.parse(localStorage.getItem(KEY)||'[]');}catch(e){return[];} }
-    function setReg(arr){ localStorage.setItem(KEY, JSON.stringify(arr)); drawReg(); }
-    function addReg(item){
-      const arr = getReg();
-      arr.unshift({dt:new Date().toISOString(), ...item});
-      setReg(arr);
-    }
-    function delReg(idx){
-      const arr = getReg(); arr.splice(idx,1); setReg(arr);
-    }
-    function clearAll(){ localStorage.removeItem(KEY); drawReg(); }
-
-    function drawReg(){
-      const tb = document.querySelector('#tblReg tbody'); tb.innerHTML='';
-      const arr=getReg(); el('countInfo').textContent = `${arr.length} atik`;
-      arr.forEach((it,i)=>{
-        const tr=document.createElement('tr');
-        const cells=[new Date(it.dt).toLocaleString(), it.type, it.platform||'', it.dir||'',
-                     it.in||'', it.out||'', it.fee||'', it.note||''];
-        cells.forEach(v=>{const td=document.createElement('td'); td.textContent=v; tr.appendChild(td);});
-        const td=document.createElement('td'); const b=document.createElement('button'); b.textContent='Efase'; b.className='btn alt'; b.onclick=()=>delReg(i); td.appendChild(b); tr.appendChild(td);
-        tb.appendChild(tr);
-      });
-    }
-    function exportCsv(){
-      const arr=getReg();
-      const headers=['date','type','platform','direction','input','output','fee','note'];
-      const rows=arr.map(it=>[it.dt,it.type,it.platform||'',it.dir||'',it.in||'',it.out||'',it.fee||'',(it.note||'').replace(/[\n\r]+/g,' ')]);
-      const csv=[headers.join(','), ...rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(','))].join('\n');
-      const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download='express_lakay_registry.csv'; a.click(); URL.revokeObjectURL(url);
-    }
-
-    // Save buttons
-    el('dop_save').addEventListener('click', ()=>addReg(calcDOP()));
-    el('px_save').addEventListener('click', ()=>addReg(calcPX()));
-    el('exportCsv').addEventListener('click', exportCsv);
-    el('clearAll').addEventListener('click', clearAll);
-
-    // Boot
-    drawReg();
-    if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js'); }
+    if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
   </script>
 </body>
 </html>
