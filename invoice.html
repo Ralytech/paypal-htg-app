@@ -1,0 +1,168 @@
+<script type="module">
+  // ==== shared mini ====
+  const fmt0 = n => Number(n||0).toLocaleString('fr-FR',{maximumFractionDigits:0});
+  const fmt2 = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const save = (k,v)=>localStorage.setItem('express_lakay_v1:'+k, JSON.stringify(v));
+  const load = (k,d=null)=>{ try{return JSON.parse(localStorage.getItem('express_lakay_v1:'+k)) ?? d;}catch{return d;} };
+
+  const COMPANIES = [
+    {id:'NEXAPAC', name:'Nexapac Haiti', logo:'./assets/nexapac-logo.png', email:'support@nexapac.ht', phone:'+509 3578 2372', addr:'8298 NW 68th St, Miami, FL 33166', extra:'PQ-044858 • USA→Haiti Logistics'},
+    {id:'RALYTECH', name:'RalyTech Digital Agency', logo:'./assets/ralytech-logo.png', email:'hello@ralytech.ht', phone:'+509 33xx xxxx', addr:'Cap-Haïtien, Haïti', extra:'Marketing & AI Services'}
+  ];
+
+  // ==== UI refs ====
+  const el = id => document.getElementById(id);
+  const tbody = document.querySelector('#tbl tbody');
+
+  // Add date field UI
+  (function injectDate(){
+    const row = document.querySelector('#docType').closest('div');
+    const label = document.createElement('label'); label.textContent='Dat dokiman';
+    const input = document.createElement('input'); input.id='docDate'; input.type='date';
+    input.valueAsDate = new Date();
+    row.appendChild(label); row.appendChild(input);
+  })();
+
+  // ==== Populate company select ====
+  const sel = el('company');
+  COMPANIES.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o); });
+  const applyCompany = () => {
+    const C = COMPANIES.find(x=>x.id===sel.value);
+    el('coLogo').src = C.logo; el('coName').textContent = C.name;
+    el('coMeta').textContent = `${C.email} • ${C.phone} • ${C.addr} • ${C.extra}`;
+    suggestDocNumber(); // resuggest on company switch
+  };
+  sel.addEventListener('change', applyCompany);
+  sel.value = load('invoice:lastCompany','NEXAPAC'); applyCompany();
+
+  // ==== line items ====
+  function addRow(data={desc:'', qty:1, price:0}){
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td><input class="d" value="${data.desc||''}" placeholder="Deskripsyon"/></td>
+      <td><input class="q" type="number" min="0" step="1" value="${data.qty||1}"/></td>
+      <td><input class="p" type="number" min="0" step="0.01" value="${data.price||0}"/></td>
+      <td class="r st">0</td>
+      <td class="no-print"><button class="btn alt rm">Retire</button></td>
+    `;
+    tbody.appendChild(tr);
+    tr.querySelector('.rm')?.addEventListener('click', ()=>{ tr.remove(); compute(); });
+    ['.d','.q','.p'].forEach(cl=>tr.querySelector(cl).addEventListener('input', compute));
+    compute();
+  }
+  document.getElementById('addRow').addEventListener('click', ()=>addRow({}));
+
+  // load last draft
+  const last = load('invoice:lastDraft', null);
+  if(last){
+    el('docType').value=last.docType||'INVOICE';
+    el('docNo').value=last.docNo||'';
+    document.getElementById('docDate').value = (last.docDate || new Date().toISOString().slice(0,10));
+    el('clName').value=last.cl?.name||'';
+    el('clPhone').value=last.cl?.phone||'';
+    el('clEmail').value=last.cl?.email||'';
+    el('clAddr').value=last.cl?.addr||'';
+    el('discPct').value=last.discPct||0;
+    (last.items||[{},{},{}]).forEach(addRow);
+  }else{
+    [{},{},{}].forEach(addRow); // 3 empty lines
+    suggestDocNumber(); // first suggestion
+  }
+
+  // ==== compute totals ====
+  function getItems(){
+    return [...tbody.querySelectorAll('tr')].map(tr=>{
+      const d=tr.querySelector('.d').value.trim();
+      const q=Number(tr.querySelector('.q').value||0);
+      const p=Number(tr.querySelector('.p').value||0);
+      return {desc:d, qty:q, price:p, sub:q*p};
+    }).filter(x=>x.desc || x.qty || x.price);
+  }
+  function compute(){
+    const items = getItems();
+    let sub = items.reduce((s,x)=>s+x.sub,0);
+    const discPct = Number(el('discPct').value||0);
+    const disc = sub * (discPct/100);
+    const tot = sub - disc;
+    [...tbody.querySelectorAll('tr')].forEach((tr,i)=>{
+      const it = items[i]||{sub:0};
+      const td = tr.querySelector('.st'); if(td) td.textContent = fmt2(it.sub);
+    });
+    el('sumSub').textContent = fmt2(sub);
+    el('sumDisc').textContent = '- '+fmt2(disc);
+    el('sumTot').textContent = fmt2(tot);
+    return {items, sub, discPct, disc, tot};
+  }
+  ['discPct'].forEach(id=>el(id).addEventListener('input', compute));
+  compute();
+
+  // ==== Auto-numbering per company & year ====
+  function counterKey(companyId, docType){
+    const y = (new Date(document.getElementById('docDate').value||new Date())).getFullYear();
+    return `invoice:counter:${companyId}:${docType}:${y}`;
+  }
+  function nextNumber(companyId, docType){
+    const key = counterKey(companyId, docType);
+    const n = (load(key, 0) || 0) + 1;
+    save(key, n);
+    const y = (new Date(document.getElementById('docDate').value||new Date())).getFullYear();
+    const prefix = (docType==='INVOICE'?'INV':'PRO');
+    return `${prefix}-${y}-${String(n).padStart(3,'0')}`;
+  }
+  function peekNumber(companyId, docType){
+    const y = (new Date(document.getElementById('docDate').value||new Date())).getFullYear();
+    const cur = load(counterKey(companyId, docType), 0) + 1;
+    const prefix = (docType==='INVOICE'?'INV':'PRO');
+    return `${prefix}-${y}-${String(cur).padStart(3,'0')}`;
+  }
+  function suggestDocNumber(){
+    if((el('docNo').value||'').trim()) return; // pa écrase si itilizatè deja mete
+    const Cid = el('company').value; const tp = el('docType').value;
+    el('docNo').placeholder = peekNumber(Cid, tp);
+  }
+  el('docType').addEventListener('change', suggestDocNumber);
+  document.getElementById('docDate').addEventListener('change', suggestDocNumber);
+
+  // ==== Save / Load / Print / WhatsApp ====
+  el('btnSave').addEventListener('click', ()=>{
+    const C = COMPANIES.find(x=>x.id===el('company').value);
+    let docNo = (el('docNo').value||'').trim();
+    if(!docNo){ docNo = nextNumber(C.id, el('docType').value); el('docNo').value = docNo; }
+    const doc = {
+      company: C,
+      docType: el('docType').value,
+      docNo,
+      docDate: document.getElementById('docDate').value || new Date().toISOString().slice(0,10),
+      cl: {name:el('clName').value.trim(), phone:el('clPhone').value.trim(), email:el('clEmail').value.trim(), addr:el('clAddr').value.trim()},
+      ...compute(),
+      note: el('note').value.trim(),
+      dt: new Date().toISOString()
+    };
+    save('invoice:lastDraft', doc);
+    save('invoice:lastCompany', C.id);
+    document.getElementById('status').textContent = `Sove ✅ (#${doc.docNo})`;
+    setTimeout(()=>document.getElementById('status').textContent='', 1500);
+  });
+
+  el('btnLoad').addEventListener('click', ()=>location.reload());
+  el('btnPrint').addEventListener('click', ()=>window.print());
+  el('btnWa').addEventListener('click', ()=>{
+    const C = COMPANIES.find(x=>x.id===el('company').value);
+    const {items, tot} = compute();
+    const lines = items.slice(0,7).map(x=>`• ${x.desc} × ${x.qty} = ${fmt2(x.sub)} HTG`).join('\n');
+    const msg =
+`${el('docType').value} ${el('docNo').value||'(proforma)'} — ${document.getElementById('docDate').value||new Date().toISOString().slice(0,10)}
+${C.name}
+Total: ${fmt2(tot)} HTG
+
+${lines}
+Remak: ${el('note').value||'-'}
+
+Kontak: ${C.phone} • ${C.email}`;
+    const phone = el('clPhone').value.trim();
+    const url = phone ? `https://wa.me/${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url,'_blank');
+  });
+
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
+</script>
