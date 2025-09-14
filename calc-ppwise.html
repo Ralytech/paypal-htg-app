@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ht">
+<head>
+  <meta charset="utf-8" />
+  <title>Express Lakay — PayPal / Wise</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a237e"/>
+  <style>
+    :root{--bg:#f5f7fb;--card:#fff;--ink:#0f172a;--muted:#5b6b8c;--line:#e6eaf1;--pri:#1a237e}
+    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+    body{margin:0;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:980px;margin:24px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+    h1{margin:0 0 10px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    label{display:block;font-size:.9rem;color:#334155;margin:6px 0 4px}
+    input,select,button{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px}
+    .seg{display:inline-grid;grid-auto-flow:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+    .seg button{border:none;background:#fff;padding:10px 14px;cursor:pointer}
+    .seg button.active{background:#eef2ff;color:#1e1b4b;font-weight:600}
+    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+    .kpi .box{border:1px solid var(--line);border-radius:12px;background:#fafbfd;padding:12px}
+    .kpi .t{font-size:.9rem;color:#475569;margin-bottom:4px}
+    .kpi .v{font-weight:800}
+    .bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{background:var(--pri);color:#fff;border:none;cursor:pointer}
+    .btn.alt{background:#fff;color:#0f172a;border:1px solid var(--line)}
+    a.back{display:inline-block;margin-bottom:10px;text-decoration:none}
+    .muted{color:#5b6b8c;font-size:.9rem}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="./index.html">← Tounen Akèy</a>
+    <div class="card">
+      <h1>PayPal / Wise</h1>
+
+      <div class="row">
+        <div>
+          <label>Platfòm</label>
+          <select id="platform">
+            <option value="PAYPAL">PayPal</option>
+            <option value="WISE">Wise</option>
+          </select>
+        </div>
+        <div>
+          <label>Direksyon</label>
+          <div class="seg" role="group">
+            <button type="button" class="segbtn active" data-d="TOPUP">Top-up (HTG→USD)</button>
+            <button type="button" class="segbtn" data-d="WITHDRAW">Withdraw (USD→HTG)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Montan sib (NET)</label>
+          <input id="target" type="number" step="0.01" placeholder="eg. 50.00">
+          <div class="muted">Top-up: USD net sou kont | Withdraw: HTG net resevwa</div>
+        </div>
+        <div>
+          <label>Taux (HTG pou 1 USD)</label>
+          <input id="rate" type="number" step="0.01" placeholder="eg. 135">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Frè %</label>
+          <input id="percent" type="number" step="0.1" value="5">
+        </div>
+        <div>
+          <label>Frè fiks (USD) — PayPal</label>
+          <input id="fixed" type="number" step="0.01" value="0.30">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Remak / Kòd kliyan (opsyonèl)</label>
+          <input id="note" placeholder="@tiktok • 509-3xxx">
+        </div>
+      </div>
+
+      <div class="bar">
+        <button class="btn" id="calc">Kalkile</button>
+        <button class="btn alt" id="save">Sove nan Rejis</button>
+      </div>
+
+      <div class="kpi">
+        <div class="box"><div class="t">Total HTG</div><div class="v" id="kHTG">—</div></div>
+        <div class="box"><div class="t">Total USD</div><div class="v" id="kUSD">—</div></div>
+        <div class="box"><div class="t">Frè total</div><div class="v" id="kFEE">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const el=id=>document.getElementById(id);
+    const fmt2=n=>Number(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    function toast(m){console.log(m)}
+
+    let dir='TOPUP';
+    document.querySelectorAll('.segbtn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.segbtn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); dir=b.dataset.d;});
+
+    function calc(){
+      const pf=el('platform').value, target=Number(el('target').value||0), rate=Number(el('rate').value||0), pct=Number(el('percent').value||0)/100, fixed=Number(el('fixed').value||0);
+      if(target<=0||rate<=0){toast('Antre valè ki valab.'); return null}
+      let usd=0, htg=0, fee=0;
+      if(dir==='TOPUP'){ usd=(target+fixed)/(1-pct); fee=usd-target; htg=usd*rate; }
+      else{ const want=target; const usdNet=want/rate; usd=(usdNet+fixed)/(1-pct); fee=usd-usdNet; htg=want; }
+      el('kHTG').textContent=fmt2(htg)+' HTG';
+      el('kUSD').textContent='$'+fmt2(usd)+' USD';
+      el('kFEE').textContent='$'+fmt2(fee)+' USD';
+      return {type:'PP/Wise',platform:pf,dir,in:dir==='TOPUP'? `$${fmt2(usd)} USD (~${fmt2(usd*rate)} HTG)` : `$${fmt2(usd)} USD`, out: dir==='TOPUP'? `$${fmt2(target)} USD` : `${fmt2(target)} HTG`, fee:`$${fmt2(fee)} USD`, note:el('note').value||''};
+    }
+
+    // ----- Registry (encrypted, same scheme) -----
+    const KEY='express_lakay_registry_cipher_v1', META='express_lakay_meta_v1';
+    let pin=null;
+    const getMeta=()=>{try{return JSON.parse(localStorage.getItem(META)||'{}')}catch{return{}}}
+    const setMeta=m=>localStorage.setItem(META,JSON.stringify(m));
+    async function deriveKey(pin,saltB64){const enc=new TextEncoder();const salt=saltB64?Uint8Array.from(atob(saltB64),c=>c.charCodeAt(0)):crypto.getRandomValues(new Uint8Array(16));const km=await crypto.subtle.importKey('raw',enc.encode(pin),'PBKDF2',false,['deriveKey']);const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:100000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},true,['encrypt','decrypt']);return {key,saltB64:btoa(String.fromCharCode(...salt))}}
+    async function encryptJSON(obj,pin){const {key,saltB64}=await deriveKey(pin,getMeta().saltB64);const iv=crypto.getRandomValues(new Uint8Array(12));const data=new TextEncoder().encode(JSON.stringify(obj));const buf=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,data);setMeta({saltB64,locked:true});return JSON.stringify({iv:btoa(String.fromCharCode(...iv)),ct:btoa(String.fromCharCode(...new Uint8Array(buf)))})}
+    async function decryptJSON(str,pin){const meta=getMeta();if(!str||!meta.saltB64)return[];const {key}=await deriveKey(pin,meta.saltB64);const {iv,ct}=JSON.parse(str);const ivA=Uint8Array.from(atob(iv),c=>c.charCodeAt(0));const ctA=Uint8Array.from(atob(ct),c=>c.charCodeAt(0));const buf=await crypto.subtle.decrypt({name:'AES-GCM',iv:ivA},key,ctA);return JSON.parse(new TextDecoder().decode(buf))}
+    async function getReg(){try{const meta=getMeta();const c=localStorage.getItem(KEY);if(meta.locked){if(!pin){pin=prompt('Antre PIN pou ouvri rejis:')||null}if(!pin)return[];return await decryptJSON(c,pin)}else{return JSON.parse(c||'[]')}}catch{return[]}}
+    async function setReg(arr){const meta=getMeta();if(meta.locked){if(!pin){pin=prompt('Antre PIN pou sove:')||null;if(!pin)return}const cipher=await encryptJSON(arr,pin);localStorage.setItem(KEY,cipher)}else{localStorage.setItem(KEY,JSON.stringify(arr))}}
+    async function addReg(it){const arr=await getReg();arr.unshift({dt:new Date().toISOString(),...it});await setReg(arr);}
+
+    el('calc').onclick=calc;
+    el('save').onclick=async()=>{const r=calc(); if(r) await addReg(r);};
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{})}
+  </script>
+</body>
+</html>
