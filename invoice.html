@@ -6,256 +6,364 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a237e"/>
-  <style>
-    :root{--bg:#f5f7fb;--card:#fff;--ink:#0f172a;--line:#e6eaf1;--pri:#1a237e}
+  <style id="invoice-styles">
+    :root{--ink:#0f172a;--muted:#6b7280;--line:#e5e7eb}
     *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
-    body{margin:0;background:var(--bg);color:var(--ink)}
-    .wrap{max-width:980px;margin:24px auto;padding:0 16px}
-    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
-    h1{margin:0 0 10px}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    input,select,button,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:16px}
-    .btn{background:var(--pri);color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer}
-    .btn.alt{background:#fff;color:#0f172a;border:1px solid var(--line)}
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left}
-    td.r{text-align:right}
-    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .muted{opacity:.75}
-    .brand{display:flex;gap:10px;align-items:center}
-    .brand img{height:42px}
+    body{margin:0;background:#f8fafc;color:var(--ink)}
+    .wrap{max-width:900px;margin:24px auto;padding:0 16px}
+    .btn{background:#1a237e;color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
+    .btn.alt{background:#fff;color:#1f2937;border:1px solid #e5e7eb}
+    .bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .muted{color:var(--muted)}
+    /* Invoice “canvas” */
+    .sheet{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px}
+    .row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+    .logo{height:36px}
+    h1.title{margin:0;font-size:24px;letter-spacing:.4px}
+    .right{text-align:right}
+    .meta{font-size:14px;color:#374151}
+    .block{margin-top:22px;display:flex;gap:80px}
+    .bcol h4{margin:0 0 8px;font-size:12px;color:#6b7280;letter-spacing:.08em}
+    .bcol .name{font-weight:700}
+    table{width:100%;border-collapse:collapse;margin-top:18px}
+    th,td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:left;font-size:14px;vertical-align:top}
+    th.r, td.r{text-align:right}
+    tfoot td{border-top:2px solid var(--line);font-weight:800}
+    .ipt{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .no-print{margin-top:10px}
     @media print {
-      .no-print{display:none}
       body{background:#fff}
-      .card{border:none;box-shadow:none}
+      .no-print{display:none!important}
+      .sheet{border:none;border-radius:0;padding:28px 16px}
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
-      <div class="no-print" style="display:flex;gap:10px;align-items:center;justify-content:space-between">
-        <h1>Fakti / Proforma</h1>
-        <a class="btn alt" href="./index.html">← Tounen Akèy</a>
-      </div>
+    <!-- Aksyon -->
+    <div class="bar no-print">
+      <a class="btn alt" href="./index.html">← Akèy</a>
+      <button class="btn" id="saveDraft">💾 Sove</button>
+      <button class="btn alt" id="printPdf">🖨️ Print / PDF</button>
+      <button class="btn alt" id="downloadPng">🖼️ Download PNG</button>
+      <button class="btn alt" id="waShare">🟢 WhatsApp</button>
+      <span id="status" class="muted"></span>
+    </div>
 
-      <!-- Header konpayi + kliyan -->
+    <!-- FÒM -->
+    <div class="sheet" id="invoice">
+      <!-- Entèt -->
       <div class="row">
-        <div>
-          <label>Konpayi</label>
-          <select id="company"></select>
-          <div class="brand" style="margin-top:8px">
-            <img id="coLogo" alt="logo">
-            <div>
-              <div id="coName"><b>—</b></div>
-              <div class="muted" id="coMeta">—</div>
-            </div>
-          </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <img id="coLogo" class="logo" alt="logo"/>
         </div>
-        <div>
-          <label>Tip dokiman</label>
-          <select id="docType">
-            <option value="INVOICE">FACTURE</option>
-            <option value="PROFORMA">PROFORMA</option>
-          </select>
-          <label style="margin-top:10px"># Dokiman</label>
-          <input id="docNo" placeholder="eg. INV-2025-001">
+        <div class="right">
+          <h1 class="title" id="docTitle">INVOICE</h1>
+          <div class="meta"><span id="docNo">#</span></div>
+          <div class="meta">Issued <span id="docDateText">—</span></div>
         </div>
       </div>
 
-      <div class="row" style="margin-top:10px">
-        <div>
-          <label>Kliyan — Non</label>
-          <input id="clName" placeholder="Non kliyan">
-          <label>Telefòn (WhatsApp)</label>
-          <input id="clPhone" placeholder="+509...">
-          <label>Imèl</label>
-          <input id="clEmail" placeholder="client@email.com">
+      <!-- FROM / BILL TO -->
+      <div class="block">
+        <div class="bcol">
+          <h4>FROM</h4>
+          <div class="name" id="coName">—</div>
+          <div id="coPerson" class="muted"></div>
+          <div id="coPhone" class="muted"></div>
+          <div id="coEmail" class="muted"></div>
+          <div id="coAddr" class="muted"></div>
         </div>
-        <div>
-          <label>Adrès</label>
-          <textarea id="clAddr" rows="5" placeholder="Adrès kliyan"></textarea>
+        <div class="bcol">
+          <h4>BILL TO</h4>
+          <div class="name" id="clNameShow">—</div>
+          <div id="clPhoneShow" class="muted"></div>
+          <div id="clEmailShow" class="muted"></div>
         </div>
       </div>
 
-      <!-- Liy atik yo -->
-      <table id="tbl">
+      <!-- TABLO Liy yo -->
+      <table id="lines">
         <thead>
           <tr>
-            <th style="width:42%">Deskripsyon</th>
-            <th style="width:12%">Qte</th>
-            <th style="width:18%">Pri (HTG)</th>
-            <th style="width:18%">Sou-Total</th>
-            <th class="no-print" style="width:10%"></th>
+            <th>Description</th>
+            <th class="r">QTY</th>
+            <th class="r">Price, <span id="curHdr">USD</span></th>
+            <th class="r">Amount, <span id="curHdr2">USD</span></th>
           </tr>
         </thead>
         <tbody></tbody>
+        <tfoot>
+          <tr><td colspan="3" class="r">Total</td><td class="r" id="sumTotal">$0.00</td></tr>
+        </tfoot>
       </table>
-      <button class="btn alt no-print" id="addRow" style="margin-top:8px">+ Add line</button>
-
-      <!-- Somè -->
-      <div class="kpi" style="margin-top:12px">
-        <div>
-          <label>Remiz (%)</label>
-          <input id="discPct" type="number" value="0" step="0.1">
-          <label>Remak</label>
-          <input id="note" placeholder="Remak sou fakti a (opsyonèl)">
-        </div>
-        <div>
-          <table>
-            <tr><td class="r">Sou-total:</td><td class="r" id="sumSub">—</td></tr>
-            <tr><td class="r">Remiz:</td><td class="r" id="sumDisc">—</td></tr>
-            <tr><td class="r"><b>Total HTG:</b></td><td class="r" id="sumTot"><b>—</b></td></tr>
-          </table>
-        </div>
-      </div>
-
-      <!-- Aksyon -->
-      <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-        <button class="btn" id="btnSave">💾 Sove</button>
-        <button class="btn alt" id="btnPrint">🖨️ Print / PDF</button>
-        <button class="btn alt" id="btnWa">🟢 WhatsApp</button>
-        <button class="btn alt" id="btnLoad">📂 Dènye dokiman</button>
-        <span class="muted" id="status"></span>
-      </div>
     </div>
 
-    <footer class="muted" style="margin-top:10px">© Express Lakay</footer>
+    <!-- Zòn Antre done (senp, pa pre-ranpli) -->
+    <div class="no-print" style="margin-top:12px">
+      <div class="grid2">
+        <div>
+          <label>Konpayi</label>
+          <select id="company" class="ipt"></select>
+        </div>
+        <div>
+          <label>Tip dokiman</label>
+          <select id="docType" class="ipt">
+            <option value="INVOICE">FACTURE</option>
+            <option value="PROFORMA">PROFORMA</option>
+          </select>
+        </div>
+        <div>
+          <label># Dokiman (vid = auto)</label>
+          <input id="docNoInput" class="ipt" placeholder="ex. INV-2025-003">
+        </div>
+        <div>
+          <label>Dat</label>
+          <input id="docDate" type="date" class="ipt">
+        </div>
+        <div>
+          <label>Kliyan — Non</label>
+          <input id="clName" class="ipt" placeholder="Non kliyan">
+        </div>
+        <div>
+          <label>Telefòn (WhatsApp)</label>
+          <input id="clPhone" class="ipt" placeholder="+509...">
+        </div>
+        <div>
+          <label>Imèl</label>
+          <input id="clEmail" class="ipt" placeholder="client@email.com">
+        </div>
+        <div>
+          <label>Deviz</label>
+          <select id="currency" class="ipt">
+            <option value="USD" selected>USD</option>
+            <option value="HTG">HTG</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <button class="btn alt" id="addLine">+ Add line</button>
+      </div>
+    </div>
   </div>
 
-  <!-- SHARED (inlined to keep things simple) -->
-  <script type="module">
-    // ==== shared (mini) ====
-    const fmt0 = n => Number(n||0).toLocaleString('fr-FR',{maximumFractionDigits:0});
-    const fmt2 = n => Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const save = (k,v)=>localStorage.setItem('express_lakay_v1:'+k, JSON.stringify(v));
-    const load = (k,d=null)=>{ try{return JSON.parse(localStorage.getItem('express_lakay_v1:'+k)) ?? d;}catch{return d;} };
-
+  <script>
+    // ---------- Données konpayi yo ----------
     const COMPANIES = [
-      {id:'NEXAPAC', name:'Nexapac Haiti', logo:'./assets/nexapac-logo.png', email:'support@nexapac.ht', phone:'+509 3578 2372', addr:'8298 NW 68th St, Miami, FL 33166', extra:'PQ-044858 • USA→Haiti Logistics'},
-      {id:'RALYTECH', name:'RalyTech Digital Agency', logo:'./assets/ralytech-logo.png', email:'hello@ralytech.ht', phone:'+509 33xx xxxx', addr:'Cap-Haïtien, Haïti', extra:'Marketing & AI Services'}
+      {
+        id:'NEXAPAC',
+        name:'Nexapac Haiti',
+        logo:'./assets/nexapac-logo.png',
+        person:'Geraly Mesidor',
+        phone:'+50935782372',
+        email:'nexapac8@gmail.com',
+        addr:'Cap-Haïtien'
+      },
+      {
+        id:'RALYTECH',
+        name:'RalyTech Digital Agency',
+        logo:'./assets/ralytech-logo.png',
+        person:'—',
+        phone:'+509 33xx xxxx',
+        email:'hello@ralytech.ht',
+        addr:'Cap-Haïtien'
+      }
     ];
 
-    // ==== UI refs ====
+    // ---------- Utils ----------
     const el = id => document.getElementById(id);
-    const tbody = document.querySelector('#tbl tbody');
+    const fmt2 = n => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const saveLS = (k,v)=>localStorage.setItem('express_lakay_v1:'+k, JSON.stringify(v));
+    const loadLS = (k,d=null)=>{try{return JSON.parse(localStorage.getItem('express_lakay_v1:'+k)) ?? d}catch{return d}};
+    const sanitize = s => (s||'').toString().replace(/[^\w\-]+/g,'-').replace(/-+/g,'-').replace(/^-|-$|_/g,'').substring(0,60);
 
-    // ==== Populate company select ====
-    const sel = el('company');
-    COMPANIES.forEach(c => {
-      const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o);
-    });
-    const applyCompany = () => {
-      const C = COMPANIES.find(x=>x.id===sel.value);
-      el('coLogo').src = C.logo; el('coName').textContent = C.name;
-      el('coMeta').textContent = `${C.email} • ${C.phone} • ${C.addr} • ${C.extra}`;
-    };
-    sel.addEventListener('change', applyCompany);
-    sel.value = load('invoice:lastCompany','NEXAPAC'); applyCompany();
+    // ---------- Populate select + init ----------
+    COMPANIES.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name;el('company').appendChild(o);});
+    el('company').value = loadLS('invoice:lastCompany','NEXAPAC');
+    el('docDate').valueAsDate = new Date();
 
-    // ==== line items ====
-    function addRow(data={desc:'', qty:1, price:0}){
-      const tr=document.createElement('tr');
+    function applyCompany(){
+      const C = COMPANIES.find(x=>x.id===el('company').value);
+      el('coLogo').src = C.logo;
+      el('coName').textContent = C.name;
+      el('coPerson').textContent = C.person;
+      el('coPhone').textContent = C.phone;
+      el('coEmail').textContent = C.email;
+      el('coAddr').textContent = C.addr;
+      suggestNumber();
+    }
+    el('company').addEventListener('change', applyCompany);
+    applyCompany();
+
+    // ---------- Lines logic ----------
+    const TB = document.querySelector('#lines tbody');
+    function addLineRow(data={desc:'', qty:'', price:''}){
+      const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input class="d" value="${data.desc||''}" placeholder="Deskripsyon"/></td>
-        <td><input class="q" type="number" min="0" step="1" value="${data.qty||1}"/></td>
-        <td><input class="p" type="number" min="0" step="0.01" value="${data.price||0}"/></td>
-        <td class="r st">0</td>
-        <td class="no-print"><button class="btn alt rm">Retire</button></td>
+        <td><input class="ipt d" placeholder="Description" value="${data.desc||''}" style="width:100%"></td>
+        <td class="r"><input class="ipt q" type="number" min="0" step="1" placeholder="" value="${data.qty||''}" style="width:120px"></td>
+        <td class="r"><input class="ipt p" type="number" min="0" step="0.01" placeholder="" value="${data.price||''}" style="width:140px"></td>
+        <td class="r amt">$0.00</td>
       `;
-      tbody.appendChild(tr);
-      tr.querySelector('.rm')?.addEventListener('click', ()=>{ tr.remove(); compute(); });
-      ['.d','.q','.p'].forEach(cl=>tr.querySelector(cl).addEventListener('input', compute));
+      TB.appendChild(tr);
+      ['q','p','d'].forEach(cls=>tr.querySelector('.'+cls).addEventListener('input', compute));
       compute();
     }
-    el('addRow').addEventListener('click', ()=>addRow({}));
+    el('addLine').addEventListener('click', ()=>addLineRow({}));
 
-    // load last draft
-    const last = load('invoice:lastDraft', null);
-    if(last){
-      el('docType').value=last.docType||'INVOICE';
-      el('docNo').value=last.docNo||'';
-      el('clName').value=last.cl?.name||'';
-      el('clPhone').value=last.cl?.phone||'';
-      el('clEmail').value=last.cl?.email||'';
-      el('clAddr').value=last.cl?.addr||'';
-      el('discPct').value=last.discPct||0;
-      (last.items||[{},{},{}]).forEach(addRow);
-    }else{
-      [{},{},{}].forEach(addRow); // 3 empty lines
-    }
-
-    // ==== compute totals ====
-    function getItems(){
-      return [...tbody.querySelectorAll('tr')].map(tr=>{
-        const d=tr.querySelector('.d').value.trim();
-        const q=Number(tr.querySelector('.q').value||0);
-        const p=Number(tr.querySelector('.p').value||0);
-        return {desc:d, qty:q, price:p, sub:q*p};
-      }).filter(x=>x.desc || x.qty || x.price);
-    }
     function compute(){
-      const items = getItems();
-      let sub = items.reduce((s,x)=>s+x.sub,0);
-      const discPct = Number(el('discPct').value||0);
-      const disc = sub * (discPct/100);
-      const tot = sub - disc;
+      const cur = el('currency').value;
+      document.getElementById('curHdr').textContent = cur;
+      document.getElementById('curHdr2').textContent = cur;
 
-      // update rows
-      [...tbody.querySelectorAll('tr')].forEach((tr,i)=>{
-        const it = items[i]||{sub:0};
-        const td = tr.querySelector('.st'); if(td) td.textContent = fmt2(it.sub);
+      let total = 0;
+      [...TB.querySelectorAll('tr')].forEach(tr=>{
+        const q = Number(tr.querySelector('.q').value||0);
+        const p = Number(tr.querySelector('.p').value||0);
+        const sub = q*p; total += sub;
+        tr.querySelector('.amt').textContent = (cur==='USD'?'$':'')+fmt2(sub)+(cur==='HTG'?' HTG':'');
       });
-
-      el('sumSub').textContent = fmt2(sub);
-      el('sumDisc').textContent = '- '+fmt2(disc);
-      el('sumTot').textContent = fmt2(tot);
-      return {items, sub, discPct, disc, tot};
+      el('sumTotal').textContent = (cur==='USD'?'$':'')+fmt2(total)+(cur==='HTG'?' HTG':'');
+      // Header mirroring (client)
+      el('clNameShow').textContent = el('clName').value || '—';
+      el('clPhoneShow').textContent = el('clPhone').value || '';
+      el('clEmailShow').textContent = el('clEmail').value || '';
+      // Meta header (# + date)
+      const dt = el('docDate').value || new Date().toISOString().slice(0,10);
+      el('docDateText').textContent = new Date(dt).toLocaleDateString('en-US');
+      el('docTitle').textContent = el('docType').value === 'INVOICE' ? 'INVOICE' : 'PROFORMA';
+      el('docNo').textContent = el('docNoInput').value ? '#'+el('docNoInput').value : '#—';
     }
-    ['discPct'].forEach(id=>el(id).addEventListener('input', compute));
+    ['currency','clName','clPhone','clEmail','docType','docDate','docNoInput'].forEach(id=>el(id).addEventListener('input', compute));
     compute();
 
-    // ==== Save / Load / Print / WhatsApp ====
-    el('btnSave').addEventListener('click', ()=>{
-      const C = COMPANIES.find(x=>x.id===el('company').value);
-      const doc = {
-        company: C, docType: el('docType').value, docNo: el('docNo').value.trim(),
-        cl: {name:el('clName').value.trim(), phone:el('clPhone').value.trim(), email:el('clEmail').value.trim(), addr:el('clAddr').value.trim()},
-        ...compute(), note: el('note').value.trim(), dt: new Date().toISOString()
-      };
-      save('invoice:lastDraft', doc);
-      save('invoice:lastCompany', C.id);
-      el('status').textContent = 'Sove ✅';
-      setTimeout(()=>el('status').textContent='', 1500);
+    // ---------- Auto numbering (per company/year) ----------
+    function kCounter() {
+      const year = (el('docDate').value||new Date().toISOString().slice(0,10)).slice(0,4);
+      const type = el('docType').value; const co = el('company').value;
+      return `invoice:counter:${co}:${type}:${year}`;
+    }
+    function peekNumber(){
+      const n = (loadLS(kCounter(),0)||0)+1;
+      const y = (el('docDate').value||new Date().toISOString().slice(0,10)).slice(0,4);
+      const pref = el('docType').value==='INVOICE'?'INV':'PRO';
+      return `${pref}-${y}-${String(n).padStart(3,'0')}`;
+    }
+    function nextNumber(){
+      const k=kCounter(); const n=(loadLS(k,0)||0)+1; saveLS(k,n);
+      el('docNoInput').value = peekNumber().replace(/-\d{3}$/, `-${String(n).padStart(3,'0')}`);
+      compute();
+    }
+    function suggestNumber(){
+      if(!el('docNoInput').value) el('docNoInput').placeholder = peekNumber();
+    }
+    ['company','docType','docDate'].forEach(id=>el(id).addEventListener('change', suggestNumber));
+    suggestNumber();
+
+    // ---------- Save draft ----------
+    el('saveDraft').addEventListener('click', ()=>{
+      if(!el('docNoInput').value) nextNumber();
+      const draft = collectDoc();
+      saveLS('invoice:lastDraft', draft);
+      saveLS('invoice:lastCompany', el('company').value);
+      el('status').textContent = `Saved ✓ (#${draft.docNo})`;
+      setTimeout(()=>el('status').textContent='',1500);
     });
 
-    el('btnLoad').addEventListener('click', ()=>{
-      const d = load('invoice:lastDraft', null);
-      if(!d){ alert('Pa gen dènye dokiman.'); return; }
-      // (senp: re-chaje paj la pou re-peple) 
-      location.reload();
+    // ---------- Print / PDF ----------
+    el('printPdf').addEventListener('click', ()=>{
+      if(!el('docNoInput').value) nextNumber();
+      window.print();
     });
 
-    el('btnPrint').addEventListener('click', ()=>window.print());
-
-    el('btnWa').addEventListener('click', ()=>{
-      const C = COMPANIES.find(x=>x.id===el('company').value);
-      const {items, tot} = compute();
-      const lines = items.slice(0,7).map(x=>`• ${x.desc} × ${x.qty} = ${fmt2(x.sub)} HTG`).join('\n');
+    // ---------- WhatsApp ----------
+    el('waShare').addEventListener('click', ()=>{
+      if(!el('docNoInput').value) nextNumber();
+      const d = collectDoc();
+      const lines = d.items.slice(0,8).map(x=>`• ${x.desc} × ${x.qty} = ${x.cur==='USD'?'$':''}${fmt2(x.sub)}${x.cur==='HTG'?' HTG':''}`).join('\n');
       const msg =
-`${el('docType').value} ${el('docNo').value||''}
-${C.name}
-Total: ${fmt2(tot)} HTG
+`${d.docType} ${d.docNo}
+${d.company.name}
+Issued ${new Date(d.docDate).toLocaleDateString('en-US')}
+Total: ${(d.cur==='USD'?'$':'')+fmt2(d.total)+(d.cur==='HTG'?' HTG':'')}
 
 ${lines}
-Remak: ${el('note').value||'-'}
 
-Kontak: ${C.phone} • ${C.email}`;
-      const phone = el('clPhone').value.trim(); // opsyonèl
-      const url = phone ? `https://wa.me/${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+Kontak: ${d.company.phone} • ${d.company.email}`;
+      const url = d.client.phone ? `https://wa.me/${d.client.phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
       window.open(url,'_blank');
     });
 
+    // ---------- Download PNG (SVG foreignObject) ----------
+    el('downloadPng').addEventListener('click', async ()=>{
+      if(!el('docNoInput').value) nextNumber();
+      const node = document.getElementById('invoice');
+      const w = node.offsetWidth, h = node.offsetHeight;
+      // Build standalone HTML for foreignObject
+      const styles = document.getElementById('invoice-styles').innerHTML;
+      const html = `
+        <style>${styles}</style>
+        <div class="sheet" style="border:none">${node.innerHTML}</div>
+      `;
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+          <foreignObject width="100%" height="100%">
+            ${html}
+          </foreignObject>
+        </svg>`;
+      const svgBlob = new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image(); img.crossOrigin='anonymous';
+      img.onload = ()=>{
+        const canvas = document.createElement('canvas');
+        canvas.width = w*2; canvas.height = h*2;
+        const ctx = canvas.getContext('2d');
+        ctx.scale(2,2);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(blob=>{
+          const a=document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = fileBase()+'.png';
+          a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),500);
+        }, 'image/png', 1);
+      };
+      img.src = url;
+    });
+
+    // ---------- Helpers: collect & filename ----------
+    function collectDoc(){
+      const C = COMPANIES.find(x=>x.id===el('company').value);
+      const cur = el('currency').value;
+      const items = [...TB.querySelectorAll('tr')].map(tr=>{
+        const desc=tr.querySelector('.d').value.trim();
+        const qty =Number(tr.querySelector('.q').value||0);
+        const price=Number(tr.querySelector('.p').value||0);
+        return {desc, qty, price, sub:qty*price, cur};
+      }).filter(x=>x.desc||x.qty||x.price);
+      const total = items.reduce((s,x)=>s+x.sub,0);
+      return {
+        company:C,
+        docType: el('docType').value==='INVOICE'?'INVOICE':'PROFORMA',
+        docNo: el('docNoInput').value,
+        docDate: el('docDate').value || new Date().toISOString().slice(0,10),
+        client: {name:el('clName').value.trim(), phone:el('clPhone').value.trim(), email:el('clEmail').value.trim()},
+        items, total, cur
+      };
+    }
+    function fileBase(){
+      const d = collectDoc();
+      const nm = sanitize(d.client.name||'client');
+      const co = sanitize(d.company.name||'company');
+      const date = d.docDate;
+      return `${co}_${nm}_${d.docNo||'DOC'}_${date}`;
+    }
+    // Retire prefill any — pa ajoute liy otomatik
+  </script>
+  <script>
     if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
   </script>
 </body>
